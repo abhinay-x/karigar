@@ -101,7 +101,9 @@ router.post('/register', [
           targetAudience: 'national',
           voicePersonality: 'friendly'
         }
-      }
+      },
+      // Mark verified for MVP/demo so protected routes work immediately
+      isVerified: true
     });
 
     await artisan.save();
