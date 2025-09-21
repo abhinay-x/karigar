@@ -32,7 +32,8 @@ const io = new Server(server, {
     origin: process.env.NODE_ENV === 'production' 
       ? [
           'https://karigarai.netlify.app',
-          'https://your-netlify-site.netlify.app', // Replace with your actual Netlify URL
+          'https://main--karigarai.netlify.app',
+          'https://deploy-preview-*--karigarai.netlify.app',
           'https://kalaai.com', 
           'https://www.kalaai.com'
         ]
@@ -76,14 +77,29 @@ app.use(limiter);
 const allowedOrigins = process.env.NODE_ENV === 'production' 
   ? [
       'https://karigarai.netlify.app',
-      'https://your-netlify-site.netlify.app', // Replace with your actual Netlify URL
+      'https://main--karigarai.netlify.app',
+      'https://deploy-preview-*--karigarai.netlify.app',
       'https://kalaai.com', 
       'https://www.kalaai.com'
     ]
   : ['http://localhost:3000', 'http://localhost:5173'];
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is allowed
+    if (process.env.NODE_ENV === 'production') {
+      const isAllowed = origin.includes('netlify.app') || 
+                       origin.includes('kalaai.com') ||
+                       allowedOrigins.includes(origin);
+      return callback(null, isAllowed);
+    } else {
+      // Development mode - allow localhost
+      return callback(null, origin.includes('localhost') || origin.includes('127.0.0.1'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
