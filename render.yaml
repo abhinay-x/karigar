@@ -4,7 +4,7 @@ services:
     name: kala-ai-frontend
     env: static
     rootDir: frontend
-    buildCommand: npm ci && npm run build
+    buildCommand: npm run build
     staticPublishPath: ./dist
     routes:
       - type: rewrite
