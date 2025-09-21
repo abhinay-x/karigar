@@ -30,7 +30,12 @@ const server = createServer(app);
 const io = new Server(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production' 
-      ? ['https://kalaai.com', 'https://www.kalaai.com']
+      ? [
+          'https://karigarai.netlify.app',
+          'https://your-netlify-site.netlify.app', // Replace with your actual Netlify URL
+          'https://kalaai.com', 
+          'https://www.kalaai.com'
+        ]
       : ['http://localhost:3000', 'http://localhost:5173'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
@@ -68,10 +73,17 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // CORS configuration
+const allowedOrigins = process.env.NODE_ENV === 'production' 
+  ? [
+      'https://karigarai.netlify.app',
+      'https://your-netlify-site.netlify.app', // Replace with your actual Netlify URL
+      'https://kalaai.com', 
+      'https://www.kalaai.com'
+    ]
+  : ['http://localhost:3000', 'http://localhost:5173'];
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://kalaai.com', 'https://www.kalaai.com']
-    : ['http://localhost:3000', 'http://localhost:5173'],
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
