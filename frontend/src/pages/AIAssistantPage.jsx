@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   Sparkles, 
   MessageSquare, 
@@ -33,8 +33,9 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const AIAssistantPage = () => {
-  const { user, isDemoMode } = useAuth();
+  const { user, isDemoMode, token } = useAuth();
   const { t } = useLanguage();
+  const API_BASE = (import.meta?.env?.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
   const [activeTab, setActiveTab] = useState('content');
   const [isGenerating, setIsGenerating] = useState(false);
   const [productInfo, setProductInfo] = useState({
@@ -57,6 +58,26 @@ const AIAssistantPage = () => {
   });
   const [generatedContent, setGeneratedContent] = useState(null);
 
+  // Refs to keep focus stable while typing
+  const nameRef = useRef(null);
+  const materialsRef = useRef(null);
+  const descriptionRef = useRef(null);
+
+  const restoreCaret = (ref, start, end) => {
+    // Restore caret position and focus after state update
+    requestAnimationFrame(() => {
+      const el = ref?.current;
+      if (el && document.activeElement !== el) {
+        try {
+          el.focus();
+          if (typeof start === 'number' && typeof end === 'number') {
+            el.setSelectionRange(start, end);
+          }
+        } catch {}
+      }
+    });
+  };
+
   const tabs = [
     { id: 'content', name: 'Content Generator', icon: <Type className="w-5 h-5" /> },
     { id: 'storytelling', name: 'AI Storytelling', icon: <BookOpen className="w-5 h-5" /> },
@@ -72,44 +93,50 @@ const AIAssistantPage = () => {
     }
 
     setIsGenerating(true);
-    
-    // Simulate AI content generation
-    setTimeout(() => {
-      const mockContent = {
-        title: `Handcrafted ${productInfo.name} - Authentic Traditional Artistry`,
-        description: `Discover the timeless beauty of this exquisite ${productInfo.name}, meticulously handcrafted by master artisan ${artisanInfo.name} from ${artisanInfo.location}. With over ${artisanInfo.experience} years of experience in traditional ${artisanInfo.craft.toLowerCase()}, each piece tells a story of cultural heritage and skilled craftsmanship.\n\nThis stunning ${productInfo.name} showcases the authentic techniques passed down through generations, featuring ${productInfo.materials.join(', ')} carefully selected for their quality and durability. The intricate details and traditional motifs reflect the rich cultural heritage of ${artisanInfo.location.split(',')[1]?.trim() || 'India'}.\n\nPerfect for collectors and enthusiasts who appreciate genuine handmade artistry, this piece brings the warmth and authenticity of traditional Indian crafts to your home.`,
-        keywords: [
-          'handcrafted',
-          productInfo.name.toLowerCase(),
-          'traditional',
-          'authentic',
-          artisanInfo.craft.toLowerCase(),
-          'indian handicrafts',
-          'cultural heritage',
-          'artisan made'
-        ],
-        hashtags: [
-          '#HandmadeInIndia',
-          '#TraditionalCrafts',
-          '#AuthenticArt',
-          `#${artisanInfo.craft}`,
-          '#CulturalHeritage',
-          '#ArtisanMade',
-          '#HandcraftedWithLove',
-          '#IndianHandicrafts'
-        ],
-        storyNarrative: `In the bustling lanes of ${artisanInfo.location}, where tradition meets artistry, ${artisanInfo.name} continues a legacy that spans generations. With hands that have shaped clay for over ${artisanInfo.experience} years, each creation is not just a product, but a piece of living history.\n\nThis ${productInfo.name} represents more than craftsmanship—it embodies the soul of traditional Indian artistry, where every curve and detail is infused with cultural significance and personal dedication.`,
-        socialMediaCaptions: {
-          instagram: `✨ Handcrafted with love by master artisan ${artisanInfo.name} from ${artisanInfo.location} ✨\n\n${productInfo.description.substring(0, 100)}...\n\n#HandmadeInIndia #TraditionalCrafts #AuthenticArt`,
-          facebook: `Discover the story behind this beautiful ${productInfo.name}! Crafted by ${artisanInfo.name}, a master artisan with ${artisanInfo.experience} years of experience in traditional ${artisanInfo.craft.toLowerCase()}.\n\nEach piece tells a story of cultural heritage and skilled craftsmanship. 🎨`,
-          whatsapp: `🎨 New arrival! Handcrafted ${productInfo.name} by master artisan ${artisanInfo.name}\n\n✅ Authentic traditional craftsmanship\n✅ ${artisanInfo.experience}+ years of experience\n✅ Made with premium ${productInfo.materials.join(', ')}\n\nInterested? Let's chat! 💬`
-        }
+    try {
+      const payload = {
+        product: productInfo,
+        artisan: artisanInfo,
+        preferences,
       };
-      
-      setGeneratedContent(mockContent);
+      const res = await fetch(`${API_BASE}/api/ai/generate-product-content`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json) throw new Error(json?.message || 'Failed to generate AI content');
+
+      // Expecting shape with title/description/keywords/hashtags/storyNarrative etc.
+      setGeneratedContent({
+        title: json.title || `AI Generated: ${productInfo.name}`,
+        description: json.description || '',
+        keywords: json.keywords || [],
+        hashtags: json.hashtags || [],
+        storyNarrative: json.storyNarrative || json.story || '',
+        socialMediaCaptions: json.socialMediaCaptions || {},
+      });
+      toast.success('AI content generated');
+    } catch (e) {
+      // Fallback to local generation for demo/offline
+      const local = {
+        title: `Handcrafted ${productInfo.name} - Authentic Traditional Artistry`,
+        description: `Discover the timeless beauty of this exquisite ${productInfo.name}, meticulously handcrafted by master artisan ${artisanInfo.name} from ${artisanInfo.location}. With over ${artisanInfo.experience} years of experience in traditional ${artisanInfo.craft.toLowerCase()}, each piece tells a story of cultural heritage and skilled craftsmanship.`,
+        keywords: [productInfo.name.toLowerCase(), 'handcrafted', 'authentic'],
+        hashtags: ['#HandmadeInIndia', '#ArtisanMade'],
+        storyNarrative: `In the lanes of ${artisanInfo.location}, ${artisanInfo.name} continues a legacy spanning generations.`,
+        socialMediaCaptions: {
+          instagram: `${productInfo.description.substring(0, 100)}...`,
+        },
+      };
+      setGeneratedContent(local);
+      toast.success('Generated demo content (offline)');
+    } finally {
       setIsGenerating(false);
-      toast.success('Content generated successfully!');
-    }, 2000);
+    }
   };
 
   const copyToClipboard = (text) => {
@@ -132,7 +159,12 @@ const AIAssistantPage = () => {
               className="input-field"
               placeholder="e.g., Terracotta Vase"
               value={productInfo.name}
-              onChange={(e) => setProductInfo({...productInfo, name: e.target.value})}
+              ref={nameRef}
+              onChange={(e) => {
+                const { selectionStart, selectionEnd, value } = e.target;
+                setProductInfo((prev) => ({ ...prev, name: value }));
+                restoreCaret(nameRef, selectionStart, selectionEnd);
+              }}
               autoComplete="off"
               spellCheck="false"
             />
@@ -165,10 +197,15 @@ const AIAssistantPage = () => {
             className="input-field"
             placeholder="e.g., Clay, Natural pigments, Gold leaf (comma separated)"
             value={productInfo.materials.join(', ')}
-            onChange={(e) => setProductInfo({
-              ...productInfo, 
-              materials: e.target.value.split(',').map(m => m.trim()).filter(m => m)
-            })}
+            ref={materialsRef}
+            onChange={(e) => {
+              const { selectionStart, selectionEnd, value } = e.target;
+              setProductInfo((prev) => ({
+                ...prev,
+                materials: value.split(',').map(m => m.trim()).filter(Boolean)
+              }));
+              restoreCaret(materialsRef, selectionStart, selectionEnd);
+            }}
             autoComplete="off"
             spellCheck="false"
           />
@@ -183,7 +220,12 @@ const AIAssistantPage = () => {
             rows="4"
             placeholder="Describe your product briefly..."
             value={productInfo.description}
-            onChange={(e) => setProductInfo({...productInfo, description: e.target.value})}
+            ref={descriptionRef}
+            onChange={(e) => {
+              const { selectionStart, selectionEnd, value } = e.target;
+              setProductInfo((prev) => ({ ...prev, description: value }));
+              restoreCaret(descriptionRef, selectionStart, selectionEnd);
+            }}
             autoComplete="off"
             spellCheck="false"
           />

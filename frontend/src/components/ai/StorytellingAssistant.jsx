@@ -14,9 +14,13 @@ import {
   Users
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext.jsx';
+import toast from 'react-hot-toast';
 
 const StorytellingAssistant = ({ artisanData, productData, onStoryGenerated }) => {
   const { t, currentLanguage } = useLanguage();
+  const { token } = useAuth();
+  const API_BASE = (import.meta?.env?.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [generatedStory, setGeneratedStory] = useState('');
@@ -24,6 +28,7 @@ const StorytellingAssistant = ({ artisanData, productData, onStoryGenerated }) =
   const [tone, setTone] = useState('warm'); // warm, professional, casual, inspiring
   const [audience, setAudience] = useState('global'); // local, national, global
   const [recordedAudio, setRecordedAudio] = useState(null);
+  const [prompt, setPrompt] = useState('');
 
   const storyTypes = [
     { 
@@ -101,46 +106,52 @@ const StorytellingAssistant = ({ artisanData, productData, onStoryGenerated }) =
     setIsGenerating(true);
     
     try {
-      const requestData = {
-        storyType,
-        tone,
-        audience,
-        language: currentLanguage,
-        artisanData: artisanData || {
-          name: 'Demo Artisan',
-          craft: 'Traditional Pottery',
-          location: 'Rajasthan, India',
-          experience: 15,
-          heritage: 'Family tradition passed down through 5 generations'
-        },
-        productData,
-        audioData: recordedAudio ? await recordedAudio.arrayBuffer() : null
-      };
+      // Use heritage-story endpoint with interview text derived from prompt and product context
+      const interviewText = prompt && prompt.trim().length > 0
+        ? prompt
+        : `Create a ${tone} ${storyType} aimed at a ${audience} audience for the product "${productData?.name || 'artisan craft'}". Include cultural heritage elements.`;
 
-      const response = await fetch('/api/ai/generate-story', {
+      const response = await fetch(`${API_BASE}/api/ai/heritage-story`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify({
+          interviewText,
+          options: { tone, audience }
+        })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to generate story');
+      let json = await response.json().catch(() => ({}));
+      if (!response.ok || !json?.success) {
+        // Try public demo endpoint before local fallback
+        const demoRes = await fetch(`${API_BASE}/api/ai/heritage-story-demo`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ interviewText, options: { tone, audience } })
+        });
+        const demoJson = await demoRes.json().catch(() => ({}));
+        if (!demoRes.ok || !demoJson?.success) {
+          throw new Error(demoJson?.message || json?.message || 'Failed to generate story');
+        }
+        json = demoJson;
       }
 
-      const data = await response.json();
-      setGeneratedStory(data.story);
+      const storyText = json.data?.story || json.data?.text || JSON.stringify(json.data);
+      setGeneratedStory(storyText);
       
       if (onStoryGenerated) {
-        onStoryGenerated(data.story, storyType);
+        onStoryGenerated(storyText, storyType);
       }
+      toast.success('AI story generated');
 
     } catch (error) {
       console.error('Error generating story:', error);
       // Fallback demo story
       const demoStory = getDemoStory();
       setGeneratedStory(demoStory);
+      toast.success('Generated demo story (offline)');
     } finally {
       setIsGenerating(false);
     }
@@ -306,6 +317,18 @@ Perfect for modern homes that appreciate authentic, sustainable art.`
                 ✓ Audio recorded successfully
               </div>
             )}
+          </div>
+
+          {/* Prompt + Generate */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Prompt (optional)</label>
+            <textarea
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              rows={3}
+              placeholder="Describe what you want in the story..."
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+            />
           </div>
 
           {/* Generate Button */}

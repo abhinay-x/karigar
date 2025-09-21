@@ -91,6 +91,60 @@ router.post('/heritage-story',
 );
 
 /**
+ * @route POST /api/ai/heritage-story-demo
+ * @desc Generate heritage story (public/demo - no auth)
+ * @access Public
+ */
+router.post('/heritage-story-demo',
+  [
+    body('interviewText').notEmpty().withMessage('Interview text is required'),
+    body('options.tone').optional().isIn(['traditional', 'modern', 'storytelling', 'professional']),
+    body('options.audience').optional().isIn(['local', 'national', 'international'])
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { interviewText, options = {} } = req.body;
+      const guestArtisan = {
+        personalInfo: {
+          name: 'Guest Artisan',
+          location: { village: 'Unknown', district: 'Unknown', state: 'India' },
+          email: 'guest@kalaai.local'
+        },
+        craftDetails: { primaryCraft: 'other', experience: 0 }
+      };
+
+      const heritageStory = await aiHeritageTranslator.generateHeritageStory(
+        guestArtisan,
+        interviewText,
+        options
+      );
+
+      res.json({
+        success: true,
+        message: 'Heritage story generated successfully',
+        data: heritageStory
+      });
+
+    } catch (error) {
+      logger.error('Public heritage story generation failed:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to generate heritage story'
+      });
+    }
+  }
+);
+
+/**
  * @route POST /api/ai/viral-content
  * @desc Create viral social media content from heritage story
  * @access Private

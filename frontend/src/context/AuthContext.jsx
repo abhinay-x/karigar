@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
 
@@ -38,6 +39,25 @@ export function AuthProvider({ children }) {
   });
   
   const [loading, setLoading] = useState(false);
+
+  // Fetch profile if we have a token but no rich user info (e.g., after refresh)
+  useEffect(() => {
+    const shouldFetch = token && (!user || !user.name || user.name === 'Artisan');
+    if (!shouldFetch) return;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const json = await res.json().catch(() => ({}));
+        if (res.ok && json?.success && json?.data) {
+          const normalized = normalizeArtisan(json.data);
+          setUser(normalized);
+          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(normalized));
+        }
+      } catch {/* noop */}
+    })();
+  }, [token]);
 
   useEffect(() => {
     if (token) {
@@ -113,8 +133,10 @@ export function AuthProvider({ children }) {
       if (!apiToken || !artisan) throw new Error('Invalid signup response');
 
       setToken(apiToken);
-      setUser(artisan);
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(artisan));
+      const normalized = normalizeArtisan(artisan);
+      setUser(normalized);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(normalized));
+      localStorage.removeItem('demo_mode');
 
       // Optionally store refresh token in memory/localStorage if needed
       // localStorage.setItem('kala_ai_refresh', refreshToken);
@@ -133,9 +155,9 @@ export function AuthProvider({ children }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.success) {
-        const msg = json?.message || 'Login failed';
+        const msg = json?.message || (res.status === 401 ? 'Invalid credentials' : 'Login failed');
         throw new Error(msg);
       }
 
@@ -143,13 +165,18 @@ export function AuthProvider({ children }) {
       if (!apiToken || !artisan) throw new Error('Invalid login response');
 
       setToken(apiToken);
-      setUser(artisan);
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(artisan));
+      const normalized = normalizeArtisan(artisan);
+      setUser(normalized);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(normalized));
+      localStorage.removeItem('demo_mode');
 
       // Redirect to the requested page or dashboard
       const params = new URLSearchParams(location.search);
       const redirectTo = redirect || params.get('redirect') || '/dashboard';
       navigate(redirectTo, { replace: true });
+    } catch (err) {
+      toast.error(err?.message || 'Login failed');
+      // don't rethrow to avoid unhandled promise rejection
     } finally {
       setLoading(false);
     }
@@ -185,7 +212,7 @@ export function AuthProvider({ children }) {
     logout,
     signup,
     enableDemoMode,
-    isDemoMode: user?.isDemo || false,
+    isDemoMode: Boolean(user?.isDemo),
     updateProfile: (updates) => {
       setUser((prev) => {
         const merged = { ...prev, ...updates, isDemo: false };
@@ -209,6 +236,22 @@ export const useAuth = () => {
 };
 
 // -------- Helpers (private to this module) ---------
+function normalizeArtisan(artisan) {
+  if (!artisan || typeof artisan !== 'object') return null;
+  const personal = artisan.personalInfo || {};
+  const craft = artisan.craftDetails || {};
+  const location = personal.location || {};
+  return {
+    id: artisan._id || artisan.id,
+    name: personal.name || artisan.name || 'Artisan',
+    email: personal.email || artisan.email || '',
+    craft: craft.primaryCraft || artisan.craft || '',
+    experience: craft.experience ?? artisan.experience ?? 0,
+    location: [location.village, location.district, location.state].filter(Boolean).join(', '),
+    isDemo: false,
+    raw: artisan,
+  };
+}
 function mapCraftType(craftType) {
   if (!craftType) return 'other';
   const map = {
