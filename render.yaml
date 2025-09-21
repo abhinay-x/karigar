@@ -3,8 +3,9 @@ services:
   - type: web
     name: kala-ai-frontend
     env: static
-    buildCommand: npm run build:frontend
-    staticPublishPath: ./frontend/dist
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
     routes:
       - type: rewrite
         source: /*
@@ -17,7 +18,8 @@ services:
   - type: web
     name: kala-ai-backend
     env: node
-    buildCommand: npm run build:backend
+    rootDir: backend
+    buildCommand: npm ci
     startCommand: npm start
     plan: free
     envVars:
