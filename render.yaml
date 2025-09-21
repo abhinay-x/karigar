@@ -1,0 +1,43 @@
+services:
+  # Frontend (React/Vite)
+  - type: web
+    name: kala-ai-frontend
+    env: static
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: ./frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: NODE_VERSION
+        value: 18.17.0
+
+  # Backend (Node.js/Express)
+  - type: web
+    name: kala-ai-backend
+    env: node
+    buildCommand: cd backend && npm ci
+    startCommand: cd backend && npm start
+    plan: free
+    envVars:
+      - key: NODE_VERSION
+        value: 18.17.0
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        fromDatabase:
+          name: kala-ai-mongodb
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: REDIS_DISABLED
+        value: true
+    healthCheckPath: /health
+
+databases:
+  - name: kala-ai-mongodb
+    databaseName: kala_ai
+    user: kala_ai_user
