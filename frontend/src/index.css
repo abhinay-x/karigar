@@ -1,0 +1,194 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@300;400;500;600;700&family=Noto+Sans+Bengali:wght@300;400;500;600;700&family=Noto+Sans+Tamil:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Cultural Theme CSS Variables */
+:root {
+  --color-primary: #D97706;
+  --color-secondary: #DC2626;
+  --color-accent: #059669;
+  --color-background: #FEF3C7;
+}
+
+/* Cultural Patterns */
+.cultural-pattern {
+  position: relative;
+}
+
+.cultural-pattern::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 25% 25%, rgba(217, 119, 6, 0.1) 2px, transparent 2px),
+    radial-gradient(circle at 75% 75%, rgba(220, 38, 38, 0.1) 2px, transparent 2px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+/* Indian Aesthetic Enhancements */
+.gradient-bg {
+  background: linear-gradient(135deg, 
+    var(--color-background) 0%, 
+    rgba(254, 243, 199, 0.8) 50%, 
+    rgba(255, 255, 255, 0.9) 100%);
+}
+
+/* Enhanced Button Styles */
+.btn-primary {
+  @apply bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-medium px-6 py-2 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105;
+}
+
+.btn-secondary {
+  @apply bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium px-6 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg;
+}
+
+/* Card Enhancements */
+.card {
+  @apply bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300;
+}
+
+/* Cultural Color Classes */
+.text-primary-500 { color: var(--color-primary); }
+.text-secondary-500 { color: var(--color-secondary); }
+.text-accent-500 { color: var(--color-accent); }
+.bg-primary-500 { background-color: var(--color-primary); }
+.bg-secondary-500 { background-color: var(--color-secondary); }
+.bg-accent-500 { background-color: var(--color-accent); }
+.bg-primary-50 { background-color: rgba(217, 119, 6, 0.1); }
+.border-primary-500 { border-color: var(--color-primary); }
+
+/* RTL Support */
+[dir="rtl"] {
+  text-align: right;
+}
+
+[dir="rtl"] .flex {
+  flex-direction: row-reverse;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  .cultural-pattern::before {
+    background-size: 20px 20px;
+  }
+  
+  .card {
+    @apply p-4;
+  }
+  
+  .btn-primary, .btn-secondary {
+    @apply px-4 py-3 text-sm;
+  }
+}
+
+/* Voice Interface Animations */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.33);
+  }
+  40%, 50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.33);
+  }
+}
+
+.pulse-ring {
+  animation: pulse-ring 1.25s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+/* Loading Animations */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Accessibility Improvements */
+.focus-visible:focus {
+  @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .card {
+    @apply border-2 border-gray-800;
+  }
+  
+  .btn-primary, .btn-secondary {
+    @apply border-2 border-gray-800;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-500 hover:bg-primary-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .btn-secondary {
+    @apply bg-secondary-500 hover:bg-secondary-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .btn-outline {
+    @apply border border-primary-500 text-primary-500 hover:bg-primary-500 hover:text-white font-medium py-2 px-4 rounded-lg transition-all duration-200;
+  }
+  
+  .card {
+    @apply bg-white rounded-xl shadow-lg border border-gray-100 p-6;
+  }
+  
+  .input-field {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200;
+    /* Ensure proper input behavior */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-color: white;
+    caret-color: #f59e42;
+  }
+  
+  .input-field:focus {
+    @apply ring-2 ring-primary-500 border-transparent;
+    box-shadow: 0 0 0 2px rgba(245, 158, 66, 0.2);
+  }
+  
+  .input-field:hover {
+    @apply border-gray-400;
+  }
+  
+  .gradient-bg {
+    @apply bg-gradient-to-br from-primary-50 via-secondary-50 to-accent-50;
+  }
+  
+  .cultural-pattern {
+    background-image: 
+      radial-gradient(circle at 25% 25%, rgba(242, 129, 29, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, rgba(14, 165, 233, 0.1) 0%, transparent 50%);
+  }
+}
